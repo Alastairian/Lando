@@ -1,0 +1,12 @@
+import React, { useEffect, useState } from "react"; import { flushQueue, getQueueStatus } from "../lib/offlineQueue";
+
+export default function QueueStatusWidget() { const [status, setStatus] = useState({ online: navigator.onLine, pending: 0 });
+
+useEffect(() => { const updateStatus = () => setStatus(getQueueStatus()); window.addEventListener("online", updateStatus); window.addEventListener("offline", updateStatus); updateStatus(); return () => { window.removeEventListener("online", updateStatus); window.removeEventListener("offline", updateStatus); }; }, []);
+
+const handleFlush = async () => { await flushQueue(); setStatus(getQueueStatus()); };
+
+return ( <div className="fixed bottom-4 right-4 bg-white shadow-xl p-4 rounded-2xl border border-gray-200 w-64"> <h3 className="font-bold text-lg">Queue Status</h3> <p>Status: <span className={status.online ? "text-green-600" : "text-red-600"}>{status.online ? "Online" : "Offline"}</span></p> <p>Pending Submissions: <strong>{status.pending}</strong></p> <button
+onClick={handleFlush}
+className="mt-3 px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition"
+> Flush Now </button> </div> ); }
