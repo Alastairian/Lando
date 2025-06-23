@@ -1,0 +1,6 @@
+// Pseudocode inside contradiction module
+if (contradiction_score > max_threshold) {
+   trigger_opposition_search();
+   mark_node_state("irreconcilable");
+   suppress_learning_for_this_path(); // equivalent to a “cold contempt” gate
+}
