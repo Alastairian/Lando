@@ -1,0 +1,109 @@
+# IAI-IPS Phase 1 Prototype: Core Node, Opposing Aspects, Contradictions
+# Includes: Forward pass, visualization, manual training loop
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+class IAI_IPS_Model:
+    def __init__(self, input_dim=5, hidden_dim=4):
+        # Archetypal vectors (manually defined for now)
+        self.V_raw = np.array([1, 0, 0, 0, 0])
+        self.V_ripe = np.array([0, 1, 0, 0, 0])
+
+        # Layer weights (random init)
+        self.W4 = np.random.randn(2, hidden_dim)
+        self.W5 = np.random.randn(hidden_dim, hidden_dim)
+        self.W6 = np.random.randn(hidden_dim, hidden_dim)
+        self.W7 = np.random.randn(hidden_dim, hidden_dim)
+        self.W8 = np.random.randn(hidden_dim, hidden_dim)
+        self.W9 = np.random.randn(hidden_dim, hidden_dim)
+        self.W10 = np.random.randn(hidden_dim, 1)
+
+        self.alpha = 1.0  # Core node plasticity parameter
+
+    def opposing_aspects(self, x):
+        d_raw = np.linalg.norm(x - self.V_raw)
+        d_ripe = np.linalg.norm(x - self.V_ripe)
+        a_raw = 1 - d_raw / (np.linalg.norm(self.V_raw) + 1e-6)
+        a_ripe = 1 - d_ripe / (np.linalg.norm(self.V_ripe) + 1e-6)
+        return a_raw, a_ripe
+
+    def contradictions(self, a_raw, a_ripe, expected=1.0):
+        int_cont = 1 - abs(a_raw - a_ripe)
+        ext_cont = 1 - a_ripe if expected == 1.0 else 1 - a_raw
+        total_cont = (int_cont + ext_cont) / 2
+        return int_cont, ext_cont, total_cont
+
+    def core_node(self, contradiction):
+        self.alpha = min(2.0, max(0.0, contradiction))
+        return self.alpha
+
+    def forward(self, x, expected=1.0):
+        a_raw, a_ripe = self.opposing_aspects(x)
+        int_cont, ext_cont, total_cont = self.contradictions(a_raw, a_ripe, expected)
+        alpha = self.core_node(total_cont)
+
+        l4 = np.dot(np.array([a_raw, a_ripe]), self.W4)
+        l5 = np.dot(l4, self.W5)
+        cn_scaling = 1 + alpha
+        l6 = np.dot(l5 * cn_scaling, self.W6)
+        l7 = np.dot(l6, self.W7)
+        l8 = np.dot(l7, self.W8)
+        l9 = np.dot(l8, self.W9)
+        out = np.dot(l9, self.W10)
+        pred = 1 / (1 + np.exp(-out))
+
+        state = {
+            'A_raw': a_raw, 'A_ripe': a_ripe,
+            'L3_IntCont': int_cont,
+            'L3_ExtCont': ext_cont,
+            'CoreNode_Alpha': alpha,
+            'CN_Scaling': cn_scaling,
+            'Prediction': pred.item()
+        }
+        return pred.item(), state
+
+# Example Inputs: Unripe, Ripe, Ambiguous
+samples = {
+    'Unripe': np.array([1, 0.1, 0.2, 0, 0]),
+    'Ripe': np.array([0.1, 1, 0.2, 0, 0]),
+    'Ambiguous': np.array([0.5, 0.5, 0.2, 0, 0])
+}
+
+model = IAI_IPS_Model()
+states_log = []
+
+for label, x in samples.items():
+    pred, state = model.forward(x, expected=1.0)
+    print(f"\n{label} Input:")
+    for k, v in state.items():
+        print(f"  {k}: {v:.4f}")
+    states_log.append(state)
+
+# Visualization: Contradiction vs Alpha
+alphas = [s['CoreNode_Alpha'] for s in states_log]
+internal_contradictions = [s['L3_IntCont'] for s in states_log]
+labels = list(samples.keys())
+
+plt.figure(figsize=(8, 4))
+plt.plot(labels, alphas, label='CoreNode Alpha', marker='o')
+plt.plot(labels, internal_contradictions, label='Internal Contradiction', marker='x')
+plt.title("CoreNode Alpha vs Internal Contradiction")
+plt.legend()
+plt.grid(True)
+plt.tight_layout()
+plt.show()
+
+# Simple Manual Training Stub
+def manual_update(model, x, target, lr=0.1):
+    pred, _ = model.forward(x, expected=target)
+    error = pred - target
+    grad = error * pred * (1 - pred)
+    model.W10 -= lr * grad * model.W9  # crude outer product sim
+    return error
+
+# Manual update test
+print("\nManual Training Stub")
+for epoch in range(5):
+    error = manual_update(model, samples['Ripe'], 1.0)
+    print(f"Epoch {epoch+1}, Error: {error:.4f}")
